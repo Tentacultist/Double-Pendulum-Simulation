@@ -1,0 +1,168 @@
+from numpy import sin, cos
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.integrate as integrate
+import matplotlib.animation as animation
+import matplotlib
+from matplotlib.widgets import Slider, Button
+matplotlib.use("TkAgg")
+
+
+# Constants
+
+# Gravity
+g = 9.81
+
+# initial angular velocities
+w1 = 0
+w2 = 0
+
+# time control
+dt = .01
+t = np.arange(0.0, 20, dt)
+
+
+fig = plt.figure()
+
+# locations of sliders
+axL1 = plt.axes([0.25, .8, 0.65, 0.03])
+axL2 = plt.axes([0.25, 0.75, 0.65, 0.03])
+axM1 = plt.axes([0.25, 0.7, 0.65, 0.03])
+axM2 = plt.axes([0.25, 0.65, 0.65, 0.03])
+axT1 = plt.axes([0.25, 0.6, 0.65, 0.03])
+axT2 = plt.axes([0.25, 0.55, 0.65, 0.03])
+
+# sliders
+
+sliderL1 = Slider(axL1, 'Length 1', 0.5, 1.5, 1)
+sliderL2 = Slider(axL2, 'Length 2', 0.5, 1.5, 1)
+sliderM1 = Slider(axM1, 'Mass 1', 0.1, 10, 5)
+sliderM2 = Slider(axM2, 'Mass 2', 0.1, 10, 5)
+sliderT1 = Slider(axT1, 'Angle 1', 0.0, 360, 120)
+sliderT2 = Slider(axT2, 'Angle 2', 0.0, 360, 120)
+
+# button
+
+butax = plt.axes([.8, .025, .1, .04])
+button = Button(butax, 'Simulate')
+
+# axis creation
+def creation():
+    global ax, line, time_template, time_text
+
+    ax = fig.add_subplot(111, autoscale_on=False, xlim=(-3, 3), ylim=(-3, 3))
+    ax.set_aspect('equal')
+    ax.grid()
+
+    # line creation
+    line, = ax.plot([], [], 'o-', lw=2)
+    time_template = 'time = %.1fs'
+    time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
+
+creation()
+
+# initial values that change when sliders are moved
+l1 = 1
+l2 = 1
+m1 = 5
+m2 = 5
+t1 = 120
+t2 = 120
+
+
+class Calculation:
+
+    def __init__(self, cl1, cl2, cm1, cm2, ct1, ct2):
+        self.len1 = cl1
+        self.len2 = cl2
+        self.ma1 = cm1
+        self.ma2 = cm2
+        self.the1 = ct1
+        self.the2 = ct2
+
+
+    def derivs(self, stateD, t):
+
+        state = stateD
+
+        dydx = np.zeros_like(state)
+
+        # sets derivatives of theta1 and theta2 to w1 and w2, their rotational velocity
+        dydx[0] = state[1]
+        dydx[2] = state[3]
+
+        # finds derivatives of w1 and w2
+        delta = state[2] - state[0]
+        den1 = (self.ma1 + self.ma2) * self.len1 - self.ma2 * self.len1 * cos(delta) * cos(delta)
+
+        dydx[1] = ((self.ma2 * self.len1 * state[1] * state[1] * sin(delta) * cos(delta)
+                    + self.ma2 * g * sin(state[2]) * cos(delta)
+                    + self.ma2 * self.len2 * state[3] * state[3] * sin(delta)
+                    - (self.ma1 + self.ma2) * g * sin(state[0]))
+                   / den1)
+
+        # den2 in a ratio to den1
+        den2 = (self.len2 / self.len1) * den1
+
+        dydx[3] = ((- self.ma2 * self.len2 * state[3] * state[3] * sin(delta) * cos(delta)
+                    + (self.ma1 + self.ma2) * g * sin(state[0]) * cos(delta)
+                    - (self.ma1 + self.ma2) * self.len1 * state[1] * state[1] * sin(delta)
+                    - (self.ma1 + self.ma2) * g * sin(state[2]))
+                   / den2)
+
+        return dydx
+
+    def call(self, stateP, t):
+
+        obj = Calculation(self.len1, self.len2, self.ma1, self.ma2, self.the1, self.the2)
+
+        y = integrate.odeint(obj.derivs, stateP, t)
+
+        return y
+
+
+# parameters for the line and the animation
+def init():
+    line.set_data([], [])
+    time_text.set_text('')
+    return line, time_text
+
+
+def animate(i, x1, x2, y1, y2):
+    thisx = [0, x1[i], x2[i]]
+    thisy = [0, y1[i], y2[i]]
+
+    line.set_data(thisx, thisy)
+    time_text.set_text(time_template % (i*dt))
+    return line, time_text
+
+
+def buttoncall(event):
+    global ani, ani2
+
+    l1 = sliderL1.val
+    l2 = sliderL2.val
+    m1 = sliderM1.val
+    m2 = sliderM2.val
+    t1 = sliderT1.val
+    t2 = sliderT2.val
+
+    stateP = np.radians([t1, w1, t2, w2])
+
+    pos = Calculation(l1, l2, m1, m2, t1, t2)
+
+    y = pos.call(stateP, t)
+
+    x1 = l1 * sin(y[:, 0])
+    x2 = l2 * sin(y[:, 2]) + x1
+
+    y1 = -l1 * cos(y[:, 0])
+    y2 = -l2 * cos(y[:, 2]) + y1
+
+    ani = animation.FuncAnimation(fig, animate, range(1, len(y)), interval=dt * 1000, blit=True, init_func=init, fargs=(x1, x2, y1, y2))
+
+
+button.on_clicked(buttoncall)
+
+
+plt.show()
