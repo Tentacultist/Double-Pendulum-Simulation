@@ -33,7 +33,6 @@ axT1 = plt.axes([0.25, 0.6, 0.65, 0.03])
 axT2 = plt.axes([0.25, 0.55, 0.65, 0.03])
 
 # sliders
-
 sliderL1 = Slider(axL1, 'Length 1', 0.5, 1.5, 1)
 sliderL2 = Slider(axL2, 'Length 2', 0.5, 1.5, 1)
 sliderM1 = Slider(axM1, 'Mass 1', 0.1, 10, 5)
@@ -42,7 +41,6 @@ sliderT1 = Slider(axT1, 'Angle 1', 0.0, 360, 120)
 sliderT2 = Slider(axT2, 'Angle 2', 0.0, 360, 120)
 
 # button
-
 butax = plt.axes([.8, .025, .1, .04])
 button = Button(butax, 'Simulate')
 
